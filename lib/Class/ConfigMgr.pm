@@ -1,20 +1,10 @@
-# Copyright (c) 2005 Timothy Appnel
-# http://www.timaoutloud.org/
-# This code is released under the Artistic License.
-#
-# Class::ConfigMgr - A base class for implementing a
-# singleton object configuration manager.
-#
-
 package Class::ConfigMgr;
 use strict;
 use warnings;
 
-use vars qw( $VERSION );
-$VERSION = 0.1;
+use version 0.11;
 
-use Class::ErrorHandler;
-@Class::ConfigMgr::ISA = qw( Class::ErrorHandler );
+use base qw( Class::ErrorHandler );
 
 sub instance {
     my $class = shift;
