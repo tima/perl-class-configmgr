@@ -1,7 +1,8 @@
 Changes
 lib/Class/ConfigMgr.pm
 Makefile.PL
-MANIFEST
+META.yml			Module meta-data (added by MakeMaker)
 README
-test.pl
-META.yml                                Module meta-data (added by MakeMaker)
+t/00.load.t
+t/pod-coverage.t
+t/pod.t
