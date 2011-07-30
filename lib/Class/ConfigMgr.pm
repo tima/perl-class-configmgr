@@ -6,15 +6,15 @@ use version 0.11;
 
 use base qw( Class::ErrorHandler );
 
+our $cfg;
+
 sub instance {
-    my $class = shift;
-    no strict 'refs';
-    return ${"${class}::cfg"} if ${"${class}::cfg"};
-    ${"${class}::cfg"} = $class->new;
+    return $cfg if $cfg;
+    $cfg = __PACKAGE__->new;
 }
 
 sub new {
-    my $mgr = bless { __directive => {} }, $_[0];
+    my $mgr = bless { __var => {}, __settings => {} }, $_[0];
     $mgr->init;
     $mgr;
 }
@@ -23,34 +23,119 @@ sub init { die "'init' must be overloaded." }
 
 sub define {
     my $mgr = shift;
-    my ( $dir, %param ) = @_;
-    $mgr->{__directive}{$dir} = undef;
-    $mgr->set( $dir, $param{Default} ) if exists $param{Default};
+    my ($vars);
+    if ( ref $_[0] eq 'ARRAY' ) {
+        $vars = shift;
+    }
+    elsif ( ref $_[0] eq 'HASH' ) {
+        $vars = shift;
+    }
+    else {
+        my ( $var, %param ) = @_;
+        $vars = [ [ $var, \%param ] ];
+    }
+    if ( ref($vars) eq 'ARRAY' ) {
+        foreach my $def (@$vars) {
+            my ( $var, $param ) = @$def;
+            my $lcvar = lc $var;
+            $mgr->{__var}{$lcvar}           = undef;
+            $mgr->{__settings}{$lcvar}      = keys %$param ? {%$param} : {};
+            $mgr->{__settings}{$lcvar}{key} = $var;
+            if ( $mgr->{__settings}{$lcvar}{path} ) {
+                push @{ $mgr->{__paths} }, $var;
+            }
+        }
+    }
+    elsif ( ref($vars) eq 'HASH' ) {
+        foreach my $var ( keys %$vars ) {
+            my $param = $vars->{$var};
+            my $lcvar = lc $var;
+            $mgr->{__settings}{$lcvar} = $param;
+            if ( ref $param eq 'ARRAY' ) {
+                $mgr->{__settings}{$lcvar} = $param->[0];
+            }
+            $mgr->{__settings}{$lcvar}{key} = $var;
+            if ( $mgr->{__settings}{$lcvar}{path} ) {
+                push @{ $mgr->{__paths} }, $var;
+            }
+        }
+    }
+} ## end sub define
+
+sub get {
+    my $mgr = shift;
+    my $var = lc shift;
+    my $val;
+    if ( defined( $val = $mgr->{__var}{$var} ) ) {
+        $val = $val->() if ref($val) eq 'CODE';
+        wantarray && ( $mgr->{__settings}{$var}{type} || '' ) eq 'ARRAY'
+          ? @$val
+          : ( ( ref $val ) eq 'ARRAY' && @$val ? $val->[0] : $val );
+    }
+    elsif ( defined( $val = $mgr->{__dbvar}{$var} ) ) {
+        wantarray && ( $mgr->{__settings}{$var}{type} || '' ) eq 'ARRAY'
+          ? @$val
+          : ( ( ref $val ) eq 'ARRAY' && @$val ? $val->[0] : $val );
+    }
+    else {
+        $mgr->default($var);
+    }
+} ## end sub get
+
+sub type {
+    my $mgr = shift;
+    my $var = lc shift;
+    return undef unless exists $mgr->{__settings}{$var};
+    return $mgr->{__settings}{$var}{type} || 'SCALAR';
+}
+
+sub default {
+    my $mgr = shift;
+    my $var = lc shift;
+    my $def = $mgr->{__settings}{$var}{default};
+    return wantarray ? () : undef unless defined $def;
+    if ( my $type = $mgr->{__settings}{$var}{type} ) {
+        if ( $type eq 'ARRAY' ) {
+            return wantarray ? ($def) : $def;
+        }
+        elsif ( $type eq 'HASH' ) {
+            if ( ref $def ne 'HASH' ) {
+                ( my ($key), my ($val) ) = split( /=/, $def );
+                return { $key => $val };
+            }
+        }
+    }
+    $def;
 }
 
 sub read_config {
-    my ( $class, $cfg_file ) = @_;
-    my $mgr = $class->instance;
+    my $class      = shift;
+    my ($cfg_file) = @_;
+    my $mgr        = $class->instance;
+    $mgr->{__var} = {};
     local ( *FH, $_, $/ );
     $/ = "\n";
+    die "Can't read config without config file name" if !$cfg_file;
     open FH, $cfg_file
-      or return $class->error("Error opening file '$cfg_file': $!");
+		or return $class->error("Error opening file '$cfg_file': $!");
+	my $line;
     while (<FH>) {
         chomp;
+        $line++;
         next if !/\S/ || /^#/;
-        my ( $dir, $val ) = $_ =~ /^\s*(\S+)\s+(.+)$/;
-        $val =~ s/\s*$//;
-        next unless $dir && defined($val);
-        return $class->error("$cfg_file: $.: directive $dir")
-          unless exists $mgr->{__directive}->{$dir};
-        $mgr->set( $dir, $val );
+        my ( $var, $val ) = $_ =~ /^\s*(\S+)\s+(.*)$/;
+        return
+          $class->error(
+                      "Config directive $var without value at $cfg_file line $line",
+          ) unless defined($val) && $val ne '';
+        $val =~ s/\s*$// if defined($val);
+        next unless $var && defined($val);
+        $mgr->set( $var, $val );
     }
     close FH;
     1;
-}
+} ## end sub read_config
 
-sub get { $_[0]->{__directive}{ $_[1] } }
-sub set { $_[0]->{__directive}{ $_[1] } = $_[2] }
 
 sub DESTROY { }
 
