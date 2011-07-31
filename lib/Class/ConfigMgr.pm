@@ -2,7 +2,7 @@ package Class::ConfigMgr;
 use strict;
 use warnings;
 
-use version '0.5';
+our $VERSION = '0.5';
 
 use base qw( Class::ErrorHandler );
 
