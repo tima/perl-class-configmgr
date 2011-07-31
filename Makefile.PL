@@ -5,6 +5,6 @@ WriteMakefile(
     'NAME'		=> 'Class::ConfigMgr',
     'VERSION_FROM'	=> 'lib/Class/ConfigMgr.pm',
     'PREREQ_PM'		=> { 
-        Class::ErrorHandler=>0 
-    }, 
+        'Class::ErrorHandler' => 0 
+    },
 );
