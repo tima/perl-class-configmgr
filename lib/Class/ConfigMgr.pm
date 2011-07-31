@@ -2,7 +2,7 @@ package Class::ConfigMgr;
 use strict;
 use warnings;
 
-use version 0.11;
+use version '0.5';
 
 use base qw( Class::ErrorHandler );
 
@@ -19,7 +19,7 @@ sub new {
     $mgr;
 }
 
-sub init { die "'init' must be overloaded." }
+sub init { die "The 'init' method must be overloaded." }
 
 sub define {
     my $mgr = shift;
@@ -158,106 +158,218 @@ sub AUTOLOAD {
 
 __END__
 
-=begin
-
 =head1 NAME
 
-Class::ConfigMgr is a base class for implementing a
-singleton object configuration manager.
+Class::ConfigMgr is a base class for implementing a singleton object
+configuration manager.
 
 =head1 SYNOPSIS
- 
- # a basic subclass
- package Foo::ConfigMgr;
- use Class::ConfigMgr;
- @Foo::ConfigMgr::ISA = qw( Class::ConfigMgr );
- sub init {
-    my $cfg = shift;
-    $cfg->define(Foo,Default=>1); 
-    $cfg->define(Bar,Default=>1); 
-    $cfg->define(Baz); 
-    $cfg->define(Fred); 
- }
- 
- # example config file foo.cfg
- Bar 0
- Fred RightSaid
- # Foo 40
- 
- # application code
- Foo::ConfigMgr->read_config('foo.cfg') or
-    die Foo::ConfigMgr->errstr;
- my $cfg = Foo::ConfigMgr->instance;
- print $cfg->Foo;  # 1 (default. 40 was commented out.)
- print $cfg->Bar;  # 0
- print $cfg->Fred; # RightSaid
- print $cfg->Baz;  # (undefined)
- # print $cfg->Quux; # ERROR!
- 
+
+    # a basic subclass
+    package Foo::ConfigMgr; use base 'Class::ConfigMgr';
+
+    sub init { my $cfg = shift; $cfg->define(Foo,Default=>1);
+    $cfg->define(Bar,Default=>1); $cfg->define(Baz); $cfg->define(Fred); 
+    }
+
+    # example config file foo.cfg
+    Bar 0 Fred RightSaid
+    # Foo 40
+
+    # application code
+    Foo::ConfigMgr->read_config('foo.cfg') or die
+    Foo::ConfigMgr->errstr; my $cfg = Foo::ConfigMgr->instance; print
+    $cfg->Foo;  # 1 (default. 40 was commented out.) print $cfg->Bar;  #
+    0 print $cfg->Fred; # RightSaid print $cfg->Baz;  # (undefined)
+    # print $cfg->Quux; # ERROR!
+
 =head1 DESCRIPTION
 
-Class::ConfigMgr is a base class for implementing a
-singleton object configuration manager. This module is based
-off of the configuration manager found in Movable Type and a 
-limited subset of L<AppConfig> configuration files.
+Class::ConfigMgr is a base class for implementing a singleton object
+configuration manager. This module is based off of the configuration
+manager found in Melody/Movable Type and a limited subset of
+L<AppConfig> configuration files.
 
 =head1 METHODS
 
-=over
+=head2 Class::ConfigMgr->read_config($file)
 
-=item read_config($file)
+Initializes the configuration manager by reads the configuration file
+specified by $file. Returns undefined if the configuration file could
+not be read. Use the C<errstr> to retreive the error message. This
+method should only be called once and before any use of the C<instance>
+method.
 
-Initializes the configuration manager by reads the
-configuration file specified by $file. Returns undefined if
-the configuration file could not be read. Use the C<errstr>
-to retreive the error message. This method should only be
-called once and before any use of the C<instance> method.
+=head2 Class::ConfigMgr->new
 
-=item instance
+Creates a new instance of L<Class::ConfigMgr> and initializes it. It
+does not read any configuration file data. This is done using the
+L<read_config> method.
 
-C<instance> returns a reference to the singleton object that
-is managing the configuration. As a singleton object,
-developers should B<ALWAYS> call this method rather the call
-than C<new>, 
+=head2 Class::ConfigMgr->instance
 
-=item define
+C<instance> returns a reference to the singleton object that is managing
+the configuration. As a singleton object, developers should B<ALWAYS>
+call this method rather the call than C<new>.
 
-This method defines which directives are recognized by the
-application and optionally a default value if the directive
-is not explicted defined in the configuration file.
-C<define> is most commonly used within the C<init> method
-all subclasses must implement.
+=head2 $cfg->define($directive[, %arg ])
 
-=item error
+This method defines which directives are recognized by the application
+and optionally a default value if the directive is not explicted defined
+in the configuration file. For special configuration directives (HASH or
+ARRAY types), you must define them B<before> the configuration file is
+read.
 
-Captures an error message and return C<undef>. Inherited
-from L<Class::ErrorHandler>.
+C<define> is most commonly used within the C<init> method all subclasses
+must implement.
 
-=item errstr
+=head2 $cfg->type($directive)
 
-Returns the last captured error message set by C<error>.
-Inherited from L<Class::ErrorHandler>.
+Returns the type of the configuration directive: 'SCALAR', 'ARRAY' or
+'HASH'. If the directive is unregistered, this method will return undef.
 
-=back
+=head2 $cfg->default($directive)
+
+Returns the default setting for the specified directive, if one exists.
+The return value is always scalar.  See L<RETURN VALUES> below for more.
+
+=head2 $cfg->get($directive)
+
+Retrieves the value for C<$directive> from the first of the following
+locations where it is defined, if any.
+
+This method provides contextual return values. See L<RETURN VALUES>
+below for more.
+
+For ARRAY and HASH directives, there is a special value, __DEFAULT__,
+one can use in the C<config.cgi> to apply the default settings of the
+directive in addition to your settings.
+
+B<Examples:>
+
+The following config file snippet replaces the built-in defined default
+of C<['plugins']> with C<['extensions']>:
+
+    PluginPath  extensions
+
+This next example I<appends> 'extensions' onto the PluginPath array
+default yielding C<[qw( plugins extensions )]>
+
+    PluginPath  __DEFAULT__ PluginPath  extensions
+
+Order is important with ARRAY directives. The following I<prepends> the
+values yielding C<[qw( extensions plugins )]>:
+
+    PluginPath  extensions PluginPath  __DEFAULT__
+
+Conversely, with HASH directives, the default values are always applied
+first so that you can override them with your config settings:
+
+    DefaultEntryPrefs   __DEFAULT__=1 DefaultEntryPrefs   height=201
+
+=head2 $cfg->error
+
+Captures an error message and return C<undef>. Inherited from
+L<Class::ErrorHandler>.
+
+=head2 $cfg->errstr
+
+Returns the last captured error message set by C<error>. Inherited from
+L<Class::ErrorHandler>.
+
+=head1 RETURN VALUES
+
+All but two accessor methods in the class B<return only a SCALAR value>.
+This is because either the value is always a SCALAR (as with C<type>) or
+reference to a HASH or ARRAY like with C<default> and C<get>.
+
+In the case of an undefined value for a type ARRAY or HASH directive,
+the referenced data structure will be an empty list:
+
+    my $hashref  = $cfg->default('SomeHASHDirective');   # Yields {} my
+    $arrayref = $cfg->get('SomeARRAYDirective');      # Yields []
+
+=head2 Contextual return values from C<get>.
+
+The C<get> method (as well as its shorthand variant; see L<SHORTHAND
+ACCESSOR FORM> below), are sensitive to the context of the method call
+and return the appropriate value for that context. If you aren't
+familiar with the vagaries of scalar vs list context, you may want to
+first review the section on it in the L<perldata> perldoc:
+L<http://perldoc.perl.org/perldata.html#Context>
+
+The return value of the C<get> method and shorthand equivalent
+C<$cfg-E<gt>SomeDirective> works similarly for ARRAY and HASH values.
+
+B<SCALAR Directives>
+
+B<For SCALAR directives>, C<get> will always return a SCALAR or
+C<undef>.
+
+    my $csspath = $cfg->get('CSSPath'); my $same    = $cfg->CSSPath;
+
+B<ARRAY Directives>
+
+For ARRAY directives, C<get> will return an ARRAY in list context or a
+reference to that array in scalar context. If the directive is
+undefined, the ARRAY reference will be an empty list as in the example
+above using C<SomeARRAYDirective>.
+
+    # Returns array: ('value')
+    my @values   = $cfg->get('SomeARRAYDirective');
+
+    # Returns arrayref: ['value']
+    my $values    = $cfg->get('SomeARRAYDirective');     #
+    Case-insensitive
+
+    # Careful! Returns string "value" due to list context!
+    my ($value)  = $cfg->SomeARRAYDirective;             # Shorthand
+    form
+
+B<HASH Directives>
+
+For HASH directives, C<get> will return a HASH in list context or a
+reference to that HASH in SCALAR context. If the directive is undefined,
+the referenced HASH will be an empty list as in the example above using
+C<SomeHASHDirective>.
+
+=head1 SHORTHAND ACCESSOR FORM
+
+Once the I<ConfigMgr> object has been constructed, you can use it to
+obtain the configuration settings. Any of the defined settings may be
+gathered using a dynamic method invoked directly from the object:
+
+    my $path = $cfg->CGIPath
+
+To set the value of a directive, do the same as the above, but pass in a
+value to the method:
+
+    $cfg->CGIPath('http://www.foo.com/mt/');
+
+If you wish to progammatically assign a configuration setting that will
+persist, add an extra parameter when doing an assignment, passing '1'
+(this second parameter is a boolean that will cause the value to
+persist, using the L<MT::Config> class to store the settings into the
+datatbase):
+
+    $cfg->EmailAddressMain('user@example.com', 1); $cfg->save_config;
 
 =head1 SUBCLASSING
 
-Subclassing Class::ConfigMgr is easy and only requires one
-method, C<init>, to be implemented.
+Subclassing Class::ConfigMgr is easy and only requires one method,
+C<init>, to be implemented.
 
-=over
+=head2 $cfg->init
 
-=item init
+Initialization method called by the L<new> constructor prior to
+returning a new instance of L<Class::ConfigMgr>.
 
-All subclasses of Class::ConfigMgr must implement an C<init>
-method that defines which directives are recognized and any
-associated default values. This method is automatically
-called by C<read_config> before the actual configuration
-file is read. It is passed a reference to the singleton and
-the return value is ignored. See the example subclass in the
-L<SYNOPSIS>. 
-
-=back
+All subclasses of Class::ConfigMgr must implement an C<init> method that
+defines which directives are recognized and any associated default
+values. This method is automatically called by C<read_config> before the
+actual configuration file is read. It is passed a reference to the
+singleton and the return value is ignored. See the example subclass in
+the L<SYNOPSIS>.
 
 =head1 DEPENDENCIES
 
@@ -265,13 +377,13 @@ L<Class::ErrorHandler>
 
 =head1 LICENSE
 
-The software is released under the Artistic License. The
-terms of the Artistic License are described at 
+The software is released under the Artistic License. The terms of the
+Artistic License are described at
 L<http://www.perl.com/language/misc/Artistic.html>.
 
 =head1 AUTHOR & COPYRIGHT
 
-Except where otherwise noted, Class::ConfigMgr is Copyright
-2005, Timothy Appnel, tima@cpan.org. All rights reserved.
+Except where otherwise noted, Class::ConfigMgr is Copyright 2005-2011,
+Timothy Appnel, tima@cpan.org. All rights reserved.
 
 =cut
