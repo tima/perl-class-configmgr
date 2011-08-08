@@ -10,7 +10,7 @@ our $cfg;
 
 sub instance {
     return $cfg if $cfg;
-    $cfg = __PACKAGE__->new;
+    $cfg = $_[0]->new;
 }
 
 sub new {
@@ -80,7 +80,7 @@ sub get {
     else {
         $mgr->default($var);
     }
-} ## end sub get
+}
 
 sub type {
     my $mgr = shift;
@@ -117,8 +117,9 @@ sub read_config {
     $/ = "\n";
     die "Can't read config without config file name" if !$cfg_file;
     open FH, $cfg_file
-		or return $class->error("Error opening file '$cfg_file': $!");
-	my $line;
+      or return $class->error("Error opening file '$cfg_file': $!");
+    my $line;
+
     while (<FH>) {
         chomp;
         $line++;
@@ -126,7 +127,7 @@ sub read_config {
         my ( $var, $val ) = $_ =~ /^\s*(\S+)\s+(.*)$/;
         return
           $class->error(
-                      "Config directive $var without value at $cfg_file line $line",
+                "Config directive $var without value at $cfg_file line $line",
           ) unless defined($val) && $val ne '';
         $val =~ s/\s*$// if defined($val);
         next unless $var && defined($val);
