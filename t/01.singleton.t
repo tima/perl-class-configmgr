@@ -1,4 +1,4 @@
-use Test::More no_plan;
+use Test::More tests=>1;
 use File::Spec;
 
 use lib File::Spec->rel2abs( File::Spec->catdir( 't', 'inc' ) );
