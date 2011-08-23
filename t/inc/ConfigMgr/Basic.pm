@@ -5,10 +5,11 @@ use base 'Class::ConfigMgr';
 
 sub init {
     my $self = shift;
-    $self->define('Test');
-    $self->define( 'TestDefault', 'default' => 'Foo' );
-    $self->define( 'TestList',    'type'    => 'ARRAY' );
-    $self->define( 'TestDict',    'type'    => 'HASH' );
+    $self->define('Directive1');
+    $self->define( { 'Directive2' => { type => 'SCALAR' } } );
+    $self->define( { 'Default' => { 'default' => 'Hello World' } } );
+    $self->define( { 'Path' => { type => 'ARRAY' } } );
+    $self->define( { 'Preferences' => { type => 'HASH' } } );
 }
 
 1;
