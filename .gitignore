@@ -3,4 +3,16 @@ Makefile.old
 Makefile
 blib/
 pm_to_blib
-*.bak
+.*
+!.gitignore
+!.perltidyrc
+*#
+*~
+*.[Oo][Ll][Dd]
+*.[Oo][Rr][Ii][Gg]
+*.[Bb][Aa][Kk]
+*.tmproj
+*.swp
+*.tmp
+pod2htm*
+
