@@ -38,8 +38,13 @@ sub define {
         foreach my $def (@$vars) {
             my ( $var, $param ) = @$def;
             my $lcvar = lc $var;
-            $mgr->{__var}{$lcvar}           = undef;
-            $mgr->{__settings}{$lcvar}      = keys %$param ? {%$param} : {};
+            $mgr->{__var}{$lcvar} = undef;
+            $mgr->{__settings}{$lcvar} = keys %$param ? {%$param} : {};
+            my $type = $mgr->{__settings}{$lcvar}->{'type'};
+            if ( $type && $type !~ m{^(SCALAR|ARRAY|HASH)$} ) {
+                delete $mgr->{__settings}{$lcvar};
+                die "'$type' is not a valid directive type.";
+            }
             $mgr->{__settings}{$lcvar}{key} = $var;
             if ( $mgr->{__settings}{$lcvar}{path} ) {
                 push @{ $mgr->{__paths} }, $var;
@@ -53,6 +58,11 @@ sub define {
             $mgr->{__settings}{$lcvar} = $param;
             if ( ref $param eq 'ARRAY' ) {
                 $mgr->{__settings}{$lcvar} = $param->[0];
+            }
+            my $type = $mgr->{__settings}{$lcvar}->{'type'};
+            if ( $type && $type !~ m{^(SCALAR|ARRAY|HASH)$} ) {
+                delete $mgr->{__settings}{$lcvar};
+                die "'$type' is not a valid directive type.";
             }
             $mgr->{__settings}{$lcvar}{key} = $var;
             if ( $mgr->{__settings}{$lcvar}{path} ) {
