@@ -82,11 +82,6 @@ sub get {
           ? @$val
           : ( ( ref $val ) eq 'ARRAY' && @$val ? $val->[0] : $val );
     }
-    elsif ( defined( $val = $mgr->{__dbvar}{$var} ) ) {
-        wantarray && ( $mgr->{__settings}{$var}{type} || '' ) eq 'ARRAY'
-          ? @$val
-          : ( ( ref $val ) eq 'ARRAY' && @$val ? $val->[0] : $val );
-    }
     else {
         $mgr->default($var);
     }
@@ -118,6 +113,40 @@ sub default {
     $def;
 }
 
+
+sub _set_internal { 
+    my $mgr = shift;
+    my ( $var, $val ) = @_;
+    $var = lc $var;
+    my $type = $mgr->type($var);
+    if ( $type eq 'ARRAY' ) {
+        if ( ref $val eq 'ARRAY' ) {
+            $mgr->{'__var'}{$var} = $val;
+        }
+        else {
+            $mgr->{'__var'}{$var} ||= [];
+            push @{ $mgr->{'__var'}{$var} }, $val if defined $val;
+        }
+        return $mgr->{'__var'}{$var};
+    } ## end if ( $type eq 'ARRAY' )
+    elsif ( $type eq 'HASH' ) {
+        my $hash = $mgr->{'__var'}{$var};
+        $hash = $mgr->default($var) unless defined $hash;
+        if ( ref $val eq 'HASH' ) {
+            $mgr->{'__var'}{$var} = $val;
+        }
+        else {
+            $hash ||= {};
+            ( my ($key), $val ) = split( /=/, $val );
+            $mgr->{'__var'}{$var}{$key} = $val;
+        }
+    }
+    else {
+        $mgr->{'__var'}{$var} = $val;
+    }
+    return $val;
+} ## end sub set_internal
+
 sub read_config {
     my $class      = shift;
     my ($cfg_file) = @_;
@@ -129,11 +158,10 @@ sub read_config {
     open FH, $cfg_file
       or return $class->error("Error opening file '$cfg_file': $!");
     my $line;
-
     while (<FH>) {
         chomp;
         $line++;
-        next if !/\S/ || /^#/;
+        next if !/\S/ || /^\s*#/;
         my ( $var, $val ) = $_ =~ /^\s*(\S+)\s+(.*)$/;
         return
           $class->error(
@@ -141,7 +169,7 @@ sub read_config {
           ) unless defined($val) && $val ne '';
         $val =~ s/\s*$// if defined($val);
         next unless $var && defined($val);
-        $mgr->set( $var, $val );
+        $mgr->_set_internal( $var, $val );
     }
     close FH;
     1;
@@ -160,7 +188,7 @@ sub AUTOLOAD {
     no strict 'refs';
     *$AUTOLOAD = sub {
         my $mgr = shift;
-        @_ ? $mgr->set( $dir, $_[0] ) : $mgr->get($dir);
+        $mgr->get($dir);
     };
     goto &$AUTOLOAD;
 }
