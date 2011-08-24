@@ -1,4 +1,4 @@
-use Test::More tests => 2;
+use Test::More tests => 3;
 
 use File::Spec;
 use lib 'lib';
@@ -8,9 +8,12 @@ use ConfigMgr::Basic;
 
 my $testdir = File::Spec->rel2abs( File::Spec->catdir( 't', 'inc' ) );
 
-ConfigMgr::Basic->read_config( File::Spec->catfile($testdir,'simple.cfg') );
-ok(1);
+eval { ConfigMgr::Basic->read_config(File::Spec->catfile($testdir,'simple.cfg') ) };
+ok(!$@,'Read simple config file');
 
-ConfigMgr::Basic->read_config( File::Spec->catfile($testdir,'invalid.cfg') );
-ok(1);
+eval { ConfigMgr::Basic->read_config(File::Spec->catfile($testdir,'invalid.cfg') ) };
+ok($@,'Reading config file with an invalid directive');
+
+eval { ConfigMgr::Basic->read_config('/path/to/nowhere.cfg') };
+ok($@,'Reading a missing config file');
 
