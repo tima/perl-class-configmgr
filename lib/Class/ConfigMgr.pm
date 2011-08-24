@@ -117,7 +117,9 @@ sub default {
 sub _set_internal {
     my $mgr = shift;
     my ( $var, $val ) = @_;
-    $var = lc $var;
+    die "No such configuration directive '$var'"
+      unless exists $mgr->{__settings}->{ lc $var };
+    $var = lc $var;    # we don't need to display this now so...
     my $type = $mgr->type($var);
     if ( $type eq 'ARRAY' ) {
         if ( ref $val eq 'ARRAY' ) {
@@ -183,7 +185,7 @@ sub AUTOLOAD {
     my $mgr = $_[0];
     ( my $dir = $AUTOLOAD ) =~ s!.+::!!;
     die "No such configuration directive '$dir'"
-      unless exists $mgr->{__directive}->{$dir};
+      unless exists $mgr->{__settings}->{ lc $dir };
     no strict 'refs';
     *$AUTOLOAD = sub { $_[0]->get($dir) };
     goto &$AUTOLOAD;
