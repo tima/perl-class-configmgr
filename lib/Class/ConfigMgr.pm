@@ -4,8 +4,6 @@ use warnings;
 
 our $VERSION = '0.5';
 
-use base qw( Class::ErrorHandler );
-
 our $cfg;
 
 sub instance {
