@@ -114,7 +114,7 @@ sub default {
 }
 
 
-sub _set_internal { 
+sub _set_internal {
     my $mgr = shift;
     my ( $var, $val ) = @_;
     $var = lc $var;
@@ -128,7 +128,7 @@ sub _set_internal {
             push @{ $mgr->{'__var'}{$var} }, $val if defined $val;
         }
         return $mgr->{'__var'}{$var};
-    } ## end if ( $type eq 'ARRAY' )
+    }
     elsif ( $type eq 'HASH' ) {
         my $hash = $mgr->{'__var'}{$var};
         $hash = $mgr->default($var) unless defined $hash;
@@ -145,7 +145,7 @@ sub _set_internal {
         $mgr->{'__var'}{$var} = $val;
     }
     return $val;
-} ## end sub set_internal
+} ## end sub _set_internal
 
 sub read_config {
     my $class      = shift;
@@ -155,16 +155,16 @@ sub read_config {
     local ( *FH, $_, $/ );
     $/ = "\n";
     die "Can't read config without config file name" if !$cfg_file;
-    open FH, $cfg_file
-      or die "Error opening file '$cfg_file': $!";
+    open FH, $cfg_file or die "Error opening file '$cfg_file': $!";
     my $line;
+
     while (<FH>) {
         chomp;
         $line++;
         next if !/\S/ || /^\s*#/;
         my ( $var, $val ) = $_ =~ /^\s*(\S+)\s+(.*)$/;
         return
-                die "Config directive $var without value at $cfg_file line $line",
+          die "Config directive $var without value at $cfg_file line $line"
           unless defined($val) && $val ne '';
         $val =~ s/\s*$// if defined($val);
         next unless $var && defined($val);
@@ -185,10 +185,7 @@ sub AUTOLOAD {
     die "No such configuration directive '$dir'"
       unless exists $mgr->{__directive}->{$dir};
     no strict 'refs';
-    *$AUTOLOAD = sub {
-        my $mgr = shift;
-        $mgr->get($dir);
-    };
+    *$AUTOLOAD = sub { $_[0]->get($dir) };
     goto &$AUTOLOAD;
 }
 
