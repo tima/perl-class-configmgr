@@ -156,7 +156,7 @@ sub read_config {
     $/ = "\n";
     die "Can't read config without config file name" if !$cfg_file;
     open FH, $cfg_file
-      or return $class->error("Error opening file '$cfg_file': $!");
+      or die "Error opening file '$cfg_file': $!";
     my $line;
     while (<FH>) {
         chomp;
@@ -164,9 +164,8 @@ sub read_config {
         next if !/\S/ || /^\s*#/;
         my ( $var, $val ) = $_ =~ /^\s*(\S+)\s+(.*)$/;
         return
-          $class->error(
-                "Config directive $var without value at $cfg_file line $line",
-          ) unless defined($val) && $val ne '';
+                die "Config directive $var without value at $cfg_file line $line",
+          unless defined($val) && $val ne '';
         $val =~ s/\s*$// if defined($val);
         next unless $var && defined($val);
         $mgr->_set_internal( $var, $val );
@@ -183,7 +182,7 @@ use vars qw( $AUTOLOAD );
 sub AUTOLOAD {
     my $mgr = $_[0];
     ( my $dir = $AUTOLOAD ) =~ s!.+::!!;
-    die("No such configuration directive '$dir'")
+    die "No such configuration directive '$dir'"
       unless exists $mgr->{__directive}->{$dir};
     no strict 'refs';
     *$AUTOLOAD = sub {
@@ -205,21 +204,29 @@ configuration manager.
 =head1 SYNOPSIS
 
     # a basic subclass
-    package Foo::ConfigMgr; use base 'Class::ConfigMgr';
+    package Foo::ConfigMgr; 
+    use base 'Class::ConfigMgr';
 
-    sub init { my $cfg = shift; $cfg->define(Foo,Default=>1);
-    $cfg->define(Bar,Default=>1); $cfg->define(Baz); $cfg->define(Fred); 
+    sub init { 
+        my $cfg = shift; 
+        $cfg->define('Foo', { Default => 1 });
+        $cfg->define('Bar', { Default => 1 }); 
+        $cfg->define('Baz'); 
+        $cfg->define('Fred'); 
     }
 
     # example config file foo.cfg
-    Bar 0 Fred RightSaid
+    Bar 0 
+    Fred RightSaid
     # Foo 40
 
     # application code
-    Foo::ConfigMgr->read_config('foo.cfg') or die
-    Foo::ConfigMgr->errstr; my $cfg = Foo::ConfigMgr->instance; print
-    $cfg->Foo;  # 1 (default. 40 was commented out.) print $cfg->Bar;  #
-    0 print $cfg->Fred; # RightSaid print $cfg->Baz;  # (undefined)
+    Foo::ConfigMgr->read_config('foo.cfg') 
+    my $cfg = Foo::ConfigMgr->instance; 
+    print $cfg->Foo;    # 1 (default. 40 was commented out.) 
+    print $cfg->Bar;    # 0 
+    print $cfg->Fred;   # RightSaid 
+    print $cfg->Baz;    # (undefined)
     # print $cfg->Quux; # ERROR!
 
 =head1 DESCRIPTION
@@ -235,7 +242,7 @@ L<AppConfig> configuration files.
 
 Initializes the configuration manager by reads the configuration file
 specified by $file. Returns undefined if the configuration file could
-not be read. Use the C<errstr> to retreive the error message. This
+not be read. This
 method should only be called once and before any use of the C<instance>
 method.
 
@@ -305,16 +312,6 @@ Conversely, with HASH directives, the default values are always applied
 first so that you can override them with your config settings:
 
     DefaultEntryPrefs   __DEFAULT__=1 DefaultEntryPrefs   height=201
-
-=head2 $cfg->error
-
-Captures an error message and return C<undef>. Inherited from
-L<Class::ErrorHandler>.
-
-=head2 $cfg->errstr
-
-Returns the last captured error message set by C<error>. Inherited from
-L<Class::ErrorHandler>.
 
 =head1 RETURN VALUES
 
